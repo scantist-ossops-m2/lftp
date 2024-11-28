@@ -1097,24 +1097,21 @@ int   MirrorJob::Do()
 	    }
 	    continue;
 	 }
+	 bool use_rmdir = (file->TypeIs(file->DIRECTORY)
+			   && recursion_mode==RECURSION_NEVER);
 	 if(script)
 	 {
-	    ArgV args("rm");
-	    if(file->TypeIs(file->DIRECTORY))
-	    {
-	       if(recursion_mode==RECURSION_NEVER)
-		  args.setarg(0,"rmdir");
-	       else
-		  args.Append("-r");
-	    }
+	    ArgV args(use_rmdir?"rmdir":"rm");
+	    if(file->TypeIs(file->DIRECTORY) && !use_rmdir)
+	       args.Append("-r");
 	    args.Append(target_session->GetFileURL(file->name));
 	    xstring_ca cmd(args.CombineQuoted());
 	    fprintf(script,"%s\n",cmd.get());
 	 }
 	 if(!script_only)
 	 {
-	    ArgV *args=new ArgV("rm");
-	    args->Append(file->name);
+	    ArgV *args=new ArgV(use_rmdir?"rmdir":"rm");
+	    args->Append(dir_file(".",file->name));
 	    args->seek(1);
 	    rmJob *j=new rmJob(target_session->Clone(),args);
 	    j->cmdline.set_allocated(args->Combine());
@@ -1122,10 +1119,7 @@ int   MirrorJob::Do()
 	    if(file->TypeIs(file->DIRECTORY))
 	    {
 	       if(recursion_mode==RECURSION_NEVER)
-	       {
-		  args->setarg(0,"rmdir");
 		  j->Rmdir();
-	       }
 	       else
 		  j->Recurse();
 	    }
@@ -1189,7 +1183,7 @@ int   MirrorJob::Do()
 	 if(!script_only)
 	 {
 	    ArgV *a=new ArgV("chmod");
-	    a->Append(file->name);
+	    a->Append(dir_file(".",file->name));
 	    a->seek(1);
 	    ChmodJob *cj=new ChmodJob(target_session->Clone(),
 				 file->mode&~mode_mask,a);
@@ -1308,7 +1302,7 @@ int   MirrorJob::Do()
 	 if(!script_only)
 	 {
 	    ArgV *args=new ArgV("rm");
-	    args->Append(file->name);
+	    args->Append(dir_file(".",file->name));
 	    args->seek(1);
 	    rmJob *j=new rmJob(source_session->Clone(),args);
 	    j->cmdline.set_allocated(args->Combine());
